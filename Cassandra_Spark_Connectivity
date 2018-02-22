@@ -1,0 +1,71 @@
+
+//To access cassndra sql in ITversity labs with out spark, below are the details
+	Hostname: csql.itversity.com
+	Port: 9042
+	To launch "cqlsh", first set environment variable CQLSH_HOST - export CQLSH_HOST=csql.itversity.com
+
+
+	//Connect to cassandra using spark shell 1.6.2, in ITversity Labs
+	spark-shell --conf spark.ui.port=12345 --packages com.datastax.spark:spark-cassandra-connector_2.10:1.6.2
+
+
+	import org.apache.spark.SparkContext
+	import org.apache.spark.SparkContext._
+	import org.apache.spark.SparkConf
+
+
+	//This below step is only required when you are using spark shell as default spark context is already initiated
+	sc.stop 
+
+
+	//Set cassandra connection parameters
+	val conf = new SparkConf(true).
+	  setMaster("local").
+	  setAppName("Cassandra_Spark").
+	  set("spark.cassandra.connection.host","csql.itversity.com")
+	//  .set("spark.cassandra.auth.username", "username")
+	//  .set("spark.cassandra.auth.password", "password")
+
+
+
+
+	//Create spark context				  
+	val sc = new SparkContext(conf)
+
+
+	//To initiate functions of cassandra in spark context`
+	import com.datastax.spark.connector._
+
+
+	val rdd= sc.cassandraTable("system","peers")  //keyspace -> system, table -> peers
+	println("Row count: "+rdd.count)
+
+
+
+
+	import org.apache.spark.sql.cassandra.CassandraSQLContext
+	import org.apache.spark.sql.cassandra._
+	import org.apache.spark.sql
+
+
+	//create cassandraContext
+	val cassandraContext = new CassandraSQLContext(sc)
+
+
+	//Query from the cassandra table as dataframe - First way
+	val tableCount = cassandraContext.sql("SELECT count(*) from system.peers")  //This is simple query, but you can use any query here
+
+
+
+
+	//load from the cassandra table as dataframe
+	import org.apache.spark.sql.SQLContext
+	val sqlContext = new SQLContext(sc)
+
+
+	val df = sqlContext.
+	  read.
+	  format("org.apache.spark.sql.cassandra").
+	  options(Map("table"->"peers", "keyspace"->"system")).
+	  load()
+	 df.show()
